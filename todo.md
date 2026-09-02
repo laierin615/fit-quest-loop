@@ -139,3 +139,10 @@
 - [x] 讓同步 snapshot 內建交易去重，並以實際 toCloudPayload 做完整整合測試，覆蓋 localDate、referenceId、coins 與 transactions。
 
 - [x] 直接測試 Home toCloudPayload：覆蓋舊雲端 opening、教檢金幣、裝備扣款、交易去重與 localDate/referenceId。 
+
+## 教檢題庫擴充與考試資訊
+
+- [x] 題庫由 6 題擴充為 68 題（教育理念與實務 22、學習者發展與適性輔導 22、課程教學與評量 24），維持「依官方命題範圍編寫之練習題」標示。
+- [x] 新增 shared/examInfo.ts：116/6/13 考試日期、國小類科五科應試科目、及格標準（考試辦法第 9 條）與官方連結。
+- [x] 教檢頁新增倒數橫幅（D-day）、EXAM BRIEFING 側欄與科目篩選。
+- [x] 新增 examInfo.test.ts 覆蓋倒數邊界、四種狀態與題庫格式，通過 test、check、build 與 desktop／mobile 驗證。
