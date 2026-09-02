@@ -12,24 +12,24 @@ describe("TeacherPrepScreen UI", () => {
     const onAnswer = vi.fn();
     render(<TeacherPrepScreen progress={progress} onAnswer={onAnswer} />);
     const question = screen.getByRole("heading", { level: 2 });
-    expect(question).toHaveTextContent("形成性評量");
-    fireEvent.click(screen.getByRole("button", { name: /在學習歷程中提供回饋並調整教學/ }));
+    expect(question).toHaveTextContent("杜威");
+    fireEvent.click(screen.getByRole("button", { name: /^C進步主義$/ }));
     expect(onAnswer).toHaveBeenCalledWith(true);
     expect(screen.getByText("答對！知識獵徑亮起。")).toBeInTheDocument();
-    expect(screen.getByText(/形成性評量發生於學習過程中/)).toBeInTheDocument();
+    expect(screen.getByText(/進步主義以兒童經驗為核心/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /下一題/ })).not.toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: /下一題/ }));
-    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("班級經營規範");
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("囤積式教育");
   });
 
   it("shows wrong styling, correct answer, and explanation after an incorrect choice", () => {
     const onAnswer = vi.fn();
     render(<TeacherPrepScreen progress={progress} onAnswer={onAnswer} />);
-    const wrong = screen.getByRole("button", { name: /作為學期成績的唯一依據/ });
+    const wrong = screen.getByRole("button", { name: /^A永恆主義$/ });
     fireEvent.click(wrong);
     expect(onAnswer).toHaveBeenCalledWith(false);
     expect(wrong).toHaveClass("wrong");
-    expect(screen.getByText("正解是 B。" )).toBeInTheDocument();
-    expect(screen.getByText(/形成性評量發生於學習過程中/)).toBeInTheDocument();
+    expect(screen.getByText("正解是 C。" )).toBeInTheDocument();
+    expect(screen.getByText(/進步主義以兒童經驗為核心/)).toBeInTheDocument();
   });
 });

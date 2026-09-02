@@ -6,7 +6,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { isCloudEnabled, startLogin } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { applyStudyAnswer, buildJourneySyncPayload, canPurchaseEquipment, coinBalanceFromLedger, combatActionCost, cycleRewards, dailyMilestoneEvent, legacyCoinOpeningBalance, legacyCoinOpeningTransaction, mergeTransactionLedgers, remoteLegacyCoinOpeningAmount, removeCycleFromLedger, resourceBalanceFromLedger, routeActionCost, shouldResetDaily, studyCoinReward, weeklyRewardFromProgress } from "@shared/gameRules";
-import { TEACHER_QUESTIONS, type TeacherQuestion } from "@shared/teacherQuestions";
+import { TEACHER_QUESTIONS, TEACHER_SUBJECTS, questionsBySubject, type TeacherQuestion, type TeacherSubject } from "@shared/teacherQuestions";
+import { EXAM_DATE_LABEL, EXAM_NAME, EXAM_OFFICIAL_URL, EXAM_PASS_RULES, EXAM_PAST_PAPER_URL, EXAM_SUBJECTS, EXAM_YEAR_LABEL, dailyQuestionPace, examCountdown } from "@shared/examInfo";
 import { gradeTeacherQuestion, nextQuestionIndex } from "@shared/studyFlow";
 import { CHEST_META, RELIC_BY_ID, addChest, applyChestOpening, emptyCollection, makeChest, mergeCollections, migrateLegacyChests, recordDefeat, recordRelic, setCycleCoinBonus, type ChestReward, type ChestTier, type CollectionState } from "@shared/collection";
 import { COMBAT_KCAL_RATIO, STUDY_ANSWER_DAMAGE, TRAIL_KCAL_RATIO, advanceDailyQuest, applyStageDamage, claimDailyQuest, currentStage, damagePerCycle, emptyQuest, ensureDailyQuest, kcalAttackDamage, mergeQuests, questTotals, revertStageDamage, stageHp, type QuestState, type StageClear } from "@shared/questSystem";
@@ -23,6 +24,7 @@ import {
   BarChart3,
   CalendarDays,
   Check,
+  ExternalLink,
   Cloud,
   Download,
   LogIn,
@@ -498,16 +500,22 @@ function SettingsScreen({ settings, todayCount, onSave }: { settings: Settings; 
 
 
 export function TeacherPrepScreen({ progress, onAnswer }: { progress: StudyProgress; onAnswer: (correct: boolean) => void }) {
+  const [subject, setSubject] = useState<TeacherSubject | "all">("all");
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
-  const solved = progress.solved;
-  const question: TeacherQuestion = TEACHER_QUESTIONS[index % TEACHER_QUESTIONS.length];
+  const pool = useMemo(() => questionsBySubject(subject), [subject]);
+  const countdown = useMemo(() => examCountdown(new Date()), []);
+  const remaining = Math.max(0, TEACHER_QUESTIONS.length - progress.correct);
+  const pace = dailyQuestionPace(countdown.days, remaining);
+  const question: TeacherQuestion = pool[index % pool.length];
   const answered = selected !== null;
+  const pickSubject = (value: TeacherSubject | "all") => { setSubject(value); setIndex(0); setSelected(null); };
   const choose = (option: number) => { if (answered) return; const result = gradeTeacherQuestion(question, option); setSelected(option); onAnswer(result.correct); if (result.correct) toast.success("答對了，獲得 +15 XP。", { description: "把這枚知識記號收進你的教檢獵徑。" }); else toast.error("這一題先記下來。", { description: "看完詳解，再走下一題。" }); };
-  const next = () => { setIndex(value => nextQuestionIndex(value, TEACHER_QUESTIONS.length)); setSelected(null); };
+  const next = () => { setIndex(value => nextQuestionIndex(value, pool.length)); setSelected(null); };
   return <>
-    <section className="page-intro compact"><div><p className="eyebrow">TEACHER CERTIFICATION / STUDY TRAIL</p><h1>教檢題庫，走一題算一題。</h1><p className="intro-copy">國民小學教育專業科目：教育理念與實務、學習者發展與適性輔導、課程教學與評量。</p></div><div className="study-stamp"><BookOpen size={17} /><span>{progress.correct} 題答對・連勝 {progress.streak}</span></div></section>
-    <section className="study-layout"><div className="panel study-card"><div className="study-meta"><span className="subject-chip">{question.subject}</span><span>第 {index + 1} 題</span></div><h2>{question.question}</h2><div className="study-options">{question.options.map((option, optionIndex) => <button key={option} className={selected === optionIndex ? (optionIndex === question.answer ? "correct" : "wrong") : answered && optionIndex === question.answer ? "correct" : ""} onClick={() => choose(optionIndex)}><span>{String.fromCharCode(65 + optionIndex)}</span><b>{option}</b></button>)}</div>{answered && <div className={`study-feedback ${selected === question.answer ? "correct" : "wrong"}`}><strong>{selected === question.answer ? "答對！知識獵徑亮起。" : `正解是 ${String.fromCharCode(65 + question.answer)}。`}</strong><p>{question.explanation}</p><small>題目依官方命題範圍編寫：{question.source}</small></div>}<div className="study-actions"><span>{answered ? "已完成本題" : "選一個答案開始"}</span><button onClick={next} disabled={!answered}>下一題 <ChevronRight size={16} /></button></div></div><aside className="panel study-guide"><p className="eyebrow">OFFICIAL SCOPE</p><div className="study-progress-badge">第 {progress.chapter} 章・寶箱 {progress.chestCount}</div><h3>國小教檢三條路線</h3><div className="study-route"><span>01</span><b>教育理念與實務</b></div><div className="study-route"><span>02</span><b>學習者發展與適性輔導</b></div><div className="study-route"><span>03</span><b>課程教學與評量</b></div><p className="study-source">範圍依教育部命題作業要點整理；官方歷屆試題與參考答案可至教師資格考試網站查閱。</p></aside></section>
+    <section className="page-intro compact"><div><p className="eyebrow">TEACHER CERTIFICATION / STUDY TRAIL</p><h1>教檢題庫，走一題算一題。</h1><p className="intro-copy">國民小學教育專業科目共三科，題庫收錄 {TEACHER_QUESTIONS.length} 題練習題，依官方命題範圍編寫。</p></div><div className="study-stamp"><BookOpen size={17} /><span>{progress.correct} 題答對・連勝 {progress.streak}</span></div></section>
+    <section className={`panel exam-countdown ${countdown.state}`}><div className="exam-countdown-main"><p className="eyebrow">{EXAM_YEAR_LABEL}教師資格考試</p><strong className="exam-days">{countdown.state === "far" || countdown.state === "near" ? <>D-{countdown.days}</> : countdown.label}</strong><p className="exam-note">{countdown.note}</p></div><div className="exam-countdown-facts"><div><span><CalendarDays size={14} /> 考試日期</span><b>{EXAM_DATE_LABEL}</b></div><div><span><Target size={14} /> 建議節奏</span><b>{remaining > 0 ? `每天 ${pace} 題可走完題庫` : "題庫已全部答對過一輪"}</b></div><div><span><BookOpen size={14} /> 尚未答對</span><b>{remaining} / {TEACHER_QUESTIONS.length} 題</b></div></div></section>
+    <section className="study-layout"><div className="panel study-card"><div className="subject-filter"><button className={subject === "all" ? "active" : ""} onClick={() => pickSubject("all")}>全部 {TEACHER_QUESTIONS.length}</button>{TEACHER_SUBJECTS.map(item => <button key={item} className={subject === item ? "active" : ""} onClick={() => pickSubject(item)}>{item} {questionsBySubject(item).length}</button>)}</div><div className="study-meta"><span className="subject-chip">{question.subject}</span><span>第 {(index % pool.length) + 1} / {pool.length} 題</span></div><h2>{question.question}</h2><div className="study-options">{question.options.map((option, optionIndex) => <button key={option} className={selected === optionIndex ? (optionIndex === question.answer ? "correct" : "wrong") : answered && optionIndex === question.answer ? "correct" : ""} onClick={() => choose(optionIndex)}><span>{String.fromCharCode(65 + optionIndex)}</span><b>{option}</b></button>)}</div>{answered && <div className={`study-feedback ${selected === question.answer ? "correct" : "wrong"}`}><strong>{selected === question.answer ? "答對！知識獵徑亮起。" : `正解是 ${String.fromCharCode(65 + question.answer)}。`}</strong><p>{question.explanation}</p><small>題目依官方命題範圍編寫：{question.source}</small></div>}<div className="study-actions"><span>{answered ? "已完成本題" : "選一個答案開始"}</span><button onClick={next} disabled={!answered}>下一題 <ChevronRight size={16} /></button></div></div><aside className="panel study-guide"><p className="eyebrow">EXAM BRIEFING</p><div className="study-progress-badge">第 {progress.chapter} 章・寶箱 {progress.chestCount}</div><h3>國小類科應試科目</h3><div className="exam-subject-list">{EXAM_SUBJECTS.map((item, itemIndex) => <div key={item.name} className={`exam-subject ${item.covered ? "covered" : ""}`}><span>{String(itemIndex + 1).padStart(2, "0")}</span><b>{item.name}</b><small>{item.group === "common" ? "共同科目" : item.covered ? "本題庫涵蓋" : "教育專業科目"}</small></div>)}</div><h3>及格標準</h3><ul className="exam-rules">{EXAM_PASS_RULES.map(rule => <li key={rule}>{rule}</li>)}</ul><p className="study-source">{EXAM_NAME}。及格標準依《高級中等以下學校及幼兒園教師資格考試辦法》第 9 條；本題庫為依官方命題範圍編寫之練習題，非官方歷屆試題。報名日期與簡章以官方公告為準。</p><div className="exam-links"><a href={EXAM_OFFICIAL_URL} target="_blank" rel="noreferrer">官方最新消息 <ExternalLink size={13} /></a><a href={EXAM_PAST_PAPER_URL} target="_blank" rel="noreferrer">歷屆試題與參考答案 <ExternalLink size={13} /></a></div></aside></section>
   </>;
 }
 

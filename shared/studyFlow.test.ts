@@ -7,7 +7,7 @@ describe("teacher study flow", () => {
     const question = TEACHER_QUESTIONS[0]!;
     const result = gradeTeacherQuestion(question, question.answer);
     expect(result).toMatchObject({ correct: true, feedbackClass: "correct", showExplanation: true, answer: question.answer });
-    expect(result.explanation).toContain("形成性評量");
+    expect(result.explanation).toBe(question.explanation);
   });
 
   it("returns wrong feedback while revealing the correct answer and explanation", () => {

@@ -381,3 +381,35 @@ button:focus-visible, a:focus-visible { outline: 3px solid #e86a33; outline-offs
 @media (max-width: 700px) { .chapter-tabs { grid-template-columns: 1fr 1fr; }.stage-body { padding-left: 16px; padding-right: 16px; }.stage-monster img { width: 108px; height: 108px; }.stage-card.empty .stage-list, .segment-tabs, .relic-grid, .bestiary-list, .achievement-list, .chest-shelf { padding-left: 16px; padding-right: 16px; }.daily-hint, .daily-progress, .daily-foot, .set-progress { padding-left: 16px; padding-right: 16px; }.node-link { margin-left: 16px; margin-right: 16px; }.relic-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }.chest-grid { grid-template-columns: 1fr 1fr; }.collection-summary { grid-template-columns: 1fr 1fr; }.collection-summary > div:nth-child(2) { border-right: 0; }.collection-summary > div:nth-child(-n+2) { border-bottom: 1px solid #e6e0d7; }.stage-row { flex-wrap: wrap; }.stage-row small { width: 100%; margin-right: 0; }.daily-foot button { width: 100%; } }
 @media (max-width: 380px) { .relic-grid { grid-template-columns: 1fr 1fr; }.chapter-tabs button b { font-size: 13px; } }
 .cloud-button.local { cursor: default; color: #8d8377; border-color: #ddd4c8; background: #f4f0e9; }
+
+/* === 教檢考試資訊與倒數 === */
+.exam-countdown { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: 22px; align-items: center; padding: 22px 24px; border-left: 5px solid var(--signal, #E86A33); }
+.exam-countdown.near { border-left-color: #C8504D; }
+.exam-countdown.today { border-left-color: #D9A441; }
+.exam-countdown.past { border-left-color: #7A9B64; }
+.exam-countdown-main .eyebrow { margin-bottom: 4px; }
+.exam-days { display: block; font-family: "Bree Serif", Georgia, serif; font-size: 3.1rem; line-height: 1.05; letter-spacing: -0.02em; color: #E86A33; }
+.exam-countdown.near .exam-days { color: #C8504D; }
+.exam-countdown.today .exam-days, .exam-countdown.past .exam-days { font-size: 2.2rem; color: #D9A441; }
+.exam-note { margin: 6px 0 0; font-size: 0.98rem; line-height: 1.5; opacity: 0.85; }
+.exam-countdown-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.exam-countdown-facts > div { display: flex; flex-direction: column; gap: 5px; padding: 12px 14px; border: 1px solid rgba(45, 41, 38, 0.14); border-radius: 12px; background: rgba(217, 164, 65, 0.08); }
+.exam-countdown-facts span { display: inline-flex; align-items: center; gap: 6px; font-size: 0.86rem; letter-spacing: 0.05em; opacity: 0.72; }
+.exam-countdown-facts b { font-size: 1.02rem; line-height: 1.35; }
+.subject-filter { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.subject-filter button { padding: 7px 14px; border-radius: 999px; border: 1px solid rgba(45, 41, 38, 0.18); background: transparent; font-size: 0.92rem; cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+.subject-filter button:hover { border-color: rgba(232, 106, 51, 0.55); }
+.subject-filter button.active { background: #E86A33; border-color: #E86A33; color: #fff; }
+.exam-subject-list { display: grid; gap: 8px; margin: 10px 0 18px; }
+.exam-subject { display: grid; grid-template-columns: 30px 1fr; gap: 4px 10px; align-items: baseline; padding: 9px 11px; border-radius: 10px; background: rgba(45, 41, 38, 0.05); }
+.exam-subject.covered { background: rgba(122, 155, 100, 0.16); box-shadow: inset 3px 0 0 #7A9B64; }
+.exam-subject span { font-family: "Bree Serif", Georgia, serif; opacity: 0.55; }
+.exam-subject b { font-size: 1rem; }
+.exam-subject small { grid-column: 2; font-size: 0.82rem; opacity: 0.68; }
+.exam-rules { margin: 10px 0 16px; padding-left: 18px; display: grid; gap: 6px; }
+.exam-rules li { font-size: 0.95rem; line-height: 1.5; }
+.exam-links { display: grid; gap: 8px; margin-top: 14px; }
+.exam-links a { display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 13px; border-radius: 10px; border: 1px solid rgba(232, 106, 51, 0.45); color: #E86A33; font-size: 0.94rem; text-decoration: none; }
+.exam-links a:hover { background: rgba(232, 106, 51, 0.1); }
+@media (max-width: 900px) { .exam-countdown { grid-template-columns: 1fr; gap: 16px; } .exam-countdown-facts { grid-template-columns: 1fr; } .exam-days { font-size: 2.6rem; } }
+@media (max-width: 420px) { .subject-filter button { flex: 1 1 calc(50% - 8px); font-size: 0.86rem; padding: 7px 8px; } }
