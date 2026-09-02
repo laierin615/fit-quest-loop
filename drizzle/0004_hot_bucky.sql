@@ -1,0 +1,1 @@
+ALTER TABLE `fitness_profiles` ADD `studyProgress` varchar(2000) DEFAULT '{}' NOT NULL;

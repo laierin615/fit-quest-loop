@@ -1,0 +1,1 @@
+ALTER TABLE `fitness_profiles` MODIFY COLUMN `equipment` varchar(4000) NOT NULL DEFAULT '[]';

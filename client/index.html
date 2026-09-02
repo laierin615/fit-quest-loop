@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <meta name="theme-color" content="#2e2c28" />
+    <meta name="description" content="Fit Quest Loop｜把每一次健身循環，走成一段看得見的旅程。" />
+    <title>Fit Quest Loop｜健身循環冒險</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script type="module">
+      // 只有在建置時提供 analytics 設定才載入；靜態部署（GitHub Pages）沒有這些變數就跳過。
+      const endpoint = import.meta.env.VITE_ANALYTICS_ENDPOINT;
+      const websiteId = import.meta.env.VITE_ANALYTICS_WEBSITE_ID;
+      if (endpoint && websiteId) {
+        const tag = document.createElement("script");
+        tag.defer = true;
+        tag.src = `${endpoint}/umami`;
+        tag.dataset.websiteId = websiteId;
+        document.body.appendChild(tag);
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,64 @@
+name: 部署到 GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: 安裝相依套件
+        run: pnpm install --frozen-lockfile
+
+      - name: 型別檢查與測試
+        run: |
+          pnpm check
+          pnpm test
+
+      - name: 建置靜態網站
+        env:
+          # GitHub Pages 會把網站放在 https://<帳號>.github.io/<repo>/ 底下，
+          # 所以資產與路由都要帶上 repo 名稱當作 base path。
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+        run: pnpm build:static
+
+      - name: 準備 Pages 產物
+        run: |
+          cp dist/public/index.html dist/public/404.html
+          touch dist/public/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

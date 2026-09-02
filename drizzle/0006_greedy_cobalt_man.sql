@@ -1,0 +1,1 @@
+ALTER TABLE `fitness_transactions` ADD `referenceId` varchar(80);
