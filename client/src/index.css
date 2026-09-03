@@ -452,3 +452,39 @@ button:focus-visible, a:focus-visible { outline: 3px solid #e86a33; outline-offs
 .note-points dd { margin: 0; font-size: 0.92rem; line-height: 1.5; opacity: 0.85; }
 .note-source { margin-top: 12px; padding-top: 10px; border-top: 1px dashed #e1dacf; font-size: 0.78rem; opacity: 0.6; word-break: break-all; }
 @media (max-width: 700px) { .study-switch { flex-direction: column; align-items: stretch; } .scope-block, .scope-panel .study-source, .notes-panel .study-source, .note-grid { padding-left: 16px; padding-right: 16px; } .scope-format { margin-left: 16px; margin-right: 16px; } .note-grid { grid-template-columns: 1fr; } }
+
+/* === 每日燃燒大卡統計 === */
+.kcal-panel { margin-top: 18px; animation: reveal .5s .14s both; }
+.range-tabs { display: flex; gap: 6px; }
+.range-tabs button { padding: 6px 12px; border: 1px solid #e1dacf; background: #fbf9f5; color: #8d8377; font-size: 12px; font-weight: 800; border-radius: 999px; cursor: pointer; }
+.range-tabs button:hover { border-color: #e0a279; }
+.range-tabs button.selected { border-color: #e86a33; background: #e86a33; color: #fff8ed; }
+.kcal-trend { display: flex; align-items: center; gap: 8px; margin: 0 24px 14px; padding: 10px 14px; border-radius: 12px; background: #f3eee7; color: #7b7064; font-size: 14px; }
+.kcal-trend.up { background: rgba(122, 155, 100, .16); color: #4f6a3d; }
+.kcal-trend.down { background: rgba(200, 80, 77, .12); color: #a3413e; }
+.kcal-trend b { margin-left: auto; color: #8a6d33; font-size: 13px; }
+.kcal-stats { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid #e1dacf; border-bottom: 1px solid #e1dacf; }
+.kcal-stats > div { padding: 15px 20px; border-right: 1px solid #e1dacf; }
+.kcal-stats > div:last-child { border-right: 0; }
+.kcal-stats span, .kcal-stats small { display: block; color: #a1988c; font-size: 11px; }
+.kcal-stats b { display: inline-block; margin: 3px 4px 1px 0; color: #433c34; font: 400 28px 'Bree Serif', serif; }
+.kcal-stats small { display: inline; margin-left: 2px; }
+.moss-dot { background: #7a9b64; }
+.journal-kcal { width: 62px; text-align: right; }
+.journal-kcal b { color: #8a6d33; font: 400 15px 'Bree Serif', serif; }
+.journal-kcal span { color: #a69b8e; font-size: 9px; margin-left: 2px; }
+@media (max-width: 700px) {
+  .kcal-panel .panel-heading { flex-wrap: wrap; gap: 10px; }
+  .range-tabs { width: 100%; }
+  .range-tabs button { flex: 1; padding: 6px 4px; }
+  .kcal-trend { margin-left: 16px; margin-right: 16px; flex-wrap: wrap; }
+  .kcal-trend b { margin-left: 0; width: 100%; }
+  .kcal-stats { grid-template-columns: 1fr 1fr; }
+  .kcal-stats > div:nth-child(2) { border-right: 0; }
+  .kcal-stats > div:nth-child(-n+2) { border-bottom: 1px solid #e1dacf; }
+  .kcal-stats b { font-size: 24px; }
+  .journal-kcal { width: 50px; }
+  .kcal-panel .chart-foot { flex-wrap: wrap; row-gap: 6px; column-gap: 14px; }
+  .kcal-panel .chart-foot > span { white-space: nowrap; }
+  .kcal-panel .chart-foot .chart-foot-note { display: block; width: 100%; margin-left: 0; }
+}

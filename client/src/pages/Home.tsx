@@ -13,6 +13,7 @@ import { EXAM_DATE_LABEL, EXAM_NAME, EXAM_OFFICIAL_URL, EXAM_PASS_RULES, EXAM_PA
 import { gradeTeacherQuestion, nextQuestionIndex } from "@shared/studyFlow";
 import { CHEST_META, RELIC_BY_ID, addChest, applyChestOpening, emptyCollection, makeChest, mergeCollections, migrateLegacyChests, recordDefeat, recordRelic, setCycleCoinBonus, type ChestReward, type ChestTier, type CollectionState } from "@shared/collection";
 import { COMBAT_KCAL_RATIO, STUDY_ANSWER_DAMAGE, TRAIL_KCAL_RATIO, advanceDailyQuest, applyStageDamage, claimDailyQuest, currentStage, damagePerCycle, emptyQuest, ensureDailyQuest, kcalAttackDamage, mergeQuests, questTotals, revertStageDamage, stageHp, type QuestState, type StageClear } from "@shared/questSystem";
+import { KCAL_RANGES, buildKcalSeries, compareKcalWindows, dailyKcalGoal, summarizeKcal, type KcalDay, type KcalRange } from "@shared/kcalStats";
 import { evaluateAchievements, unlockedAchievementIds, type AchievementInput, type AchievementView } from "@shared/achievements";
 import { QuestMapScreen } from "@/components/QuestMap";
 import { Codex } from "@/components/Codex";
@@ -48,6 +49,9 @@ import {
   Swords,
   Target,
   Trophy,
+  TrendingDown,
+  TrendingUp,
+  Minus,
   X,
   Settings,
   Bell,
@@ -60,6 +64,8 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  ComposedChart,
+  Line,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -119,12 +125,12 @@ function shortDate(key: string) {
   return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
-function getLastSevenDays(): DayPoint[] {
+function getLastDays(span: number): DayPoint[] {
   const today = new Date();
-  return Array.from({ length: 7 }, (_, index) => {
+  return Array.from({ length: span }, (_, index) => {
     const date = new Date(today);
     date.setHours(0, 0, 0, 0);
-    date.setDate(today.getDate() - (6 - index));
+    date.setDate(today.getDate() - (span - 1 - index));
     const key = dateKey(date);
     return {
       key,
@@ -137,7 +143,7 @@ function getLastSevenDays(): DayPoint[] {
 }
 
 function makeSeedState(): ProgressState {
-  const week = getLastSevenDays();
+  const week = getLastDays(7);
   const seedCounts = [5, 7, 6, 8, 4, 3, 0];
   const history: History = {};
   week.forEach((day, index) => { history[day.key] = seedCounts[index]; });
@@ -552,7 +558,34 @@ export function TeacherPrepScreen({ progress, onAnswer }: { progress: StudyProgr
   </>;
 }
 
-function StatsScreen({ days, totalCount, xp, streak, entries, transactions, kcalPerCycle, dailyGoal }: { days: DayPoint[]; totalCount: number; xp: number; streak: number; entries: CycleEntry[]; transactions: ResourceTransaction[]; kcalPerCycle: number; dailyGoal: number }) {
+function KcalBurnPanel({ history, dailyGoal, kcalPerCycle }: { history: KcalDay[]; dailyGoal: number; kcalPerCycle: number }) {
+  const [range, setRange] = useState<KcalRange>(7);
+  const goalKcal = dailyKcalGoal(dailyGoal, kcalPerCycle);
+  const window = useMemo(() => history.slice(-range), [history, range]);
+  const summary = useMemo(() => summarizeKcal(window, goalKcal), [window, goalKcal]);
+  const trend = useMemo(() => compareKcalWindows(history, range), [history, range]);
+  const series = useMemo(() => buildKcalSeries(window, goalKcal, Math.min(7, range)), [window, goalKcal, range]);
+  const chartData = series.map(point => ({ name: range > 14 ? shortDate(point.key) : point.label, 大卡: point.kcal, 移動平均: point.average }));
+  const TrendIcon = trend.direction === "up" ? TrendingUp : trend.direction === "down" ? TrendingDown : Minus;
+  const trendLabel = trend.previous <= 0 ? `前 ${range} 天沒有紀錄，這是第一段燃燒` : trend.direction === "flat" ? `與前 ${range} 天持平` : `較前 ${range} 天 ${trend.delta > 0 ? "+" : ""}${trend.delta} 大卡（${trend.pct > 0 ? "+" : ""}${trend.pct}%）`;
+  return (
+    <section className="panel kcal-panel">
+      <div className="panel-heading"><div><p className="eyebrow">DAILY BURN / KCAL</p><h3>每日燃燒大卡</h3></div><div className="range-tabs">{KCAL_RANGES.map(item => <button key={item} className={range === item ? "selected" : ""} onClick={() => setRange(item)}>近 {item} 天</button>)}</div></div>
+      <div className={`kcal-trend ${trend.direction}`}><TrendIcon size={15} /><span>{trendLabel}</span>{summary.streak > 0 && <b>連續燃燒 {summary.streak} 日</b>}</div>
+      <div className="kcal-stats">
+        <div><span>區間總燃燒</span><b>{summary.total}</b><small>kcal</small></div>
+        <div><span>日均燃燒</span><b>{summary.average}</b><small>kcal</small></div>
+        <div><span>最高單日</span><b>{summary.best?.kcal ?? 0}</b><small>{summary.best ? `kcal・${shortDate(summary.best.key)}` : "尚無紀錄"}</small></div>
+        <div><span>達標天數</span><b>{summary.goalHitDays}</b><small>/ {summary.span} 天</small></div>
+      </div>
+      <div className="chart-wrap"><ResponsiveContainer width="100%" height="100%"><ComposedChart data={chartData} margin={{ top: 8, right: 0, left: -14, bottom: 0 }}><CartesianGrid vertical={false} stroke="#e5dfd4" strokeDasharray="3 4" /><XAxis dataKey="name" axisLine={false} tickLine={false} interval={range > 14 ? 3 : 0} tick={{ fill: "#897f70", fontSize: 13, fontWeight: 700 }} /><YAxis axisLine={false} tickLine={false} tick={{ fill: "#b0a89c", fontSize: 13 }} allowDecimals={false} /><Tooltip cursor={{ fill: "#f3eee7" }} contentStyle={{ border: "1px solid #ded5c8", borderRadius: "12px", boxShadow: "0 10px 30px #2b292422", fontFamily: "Noto Sans TC", fontSize: 14 }} labelStyle={{ fontSize: 14 }} itemStyle={{ fontSize: 14 }} formatter={(value: number, name: string) => [`${value} kcal`, name]} />{goalKcal > 0 && <ReferenceLine y={goalKcal} stroke="#d9a441" strokeDasharray="4 4" />}<Bar dataKey="大卡" fill="#e86a33" radius={[5, 5, 1, 1]} maxBarSize={30} /><Line type="monotone" dataKey="移動平均" stroke="#7a9b64" strokeWidth={2} dot={false} /></ComposedChart></ResponsiveContainer></div>
+      <div className="chart-foot"><span><i className="legend-dot orange-dot" />每日燃燒</span><span><i className="legend-dot moss-dot" />{Math.min(7, range)} 日移動平均</span><span><i className="legend-line" />每日目標 {goalKcal} kcal</span><span className="chart-foot-note">有訓練 {summary.activeDays} / {summary.span} 天</span></div>
+      <p className="panel-note">燃燒大卡＝實際完成循環入帳的熱量，會隨遞增獎勵與裝備加成而高於「{kcalPerCycle} 大卡 × 次數」；花在推進獵徑、打怪與裝備的是可支配大卡，不會從這裡扣掉。</p>
+    </section>
+  );
+}
+
+function StatsScreen({ days, kcalHistory, totalCount, xp, streak, entries, transactions, kcalPerCycle, dailyGoal }: { days: DayPoint[]; kcalHistory: KcalDay[]; totalCount: number; xp: number; streak: number; entries: CycleEntry[]; transactions: ResourceTransaction[]; kcalPerCycle: number; dailyGoal: number }) {
   const chartData = days.map((day) => ({ name: day.label, 次數: day.count, 大卡: day.kcal }));
   const [resourceFilter, setResourceFilter] = useState<"all" | "kcal" | "coins">("all");
   const [kindFilter, setKindFilter] = useState<"all" | ResourceTransaction["kind"]>("all");
@@ -563,7 +596,8 @@ function StatsScreen({ days, totalCount, xp, streak, entries, transactions, kcal
       <section className="page-intro compact"><div><p className="eyebrow">FIELD NOTES / STATISTICS</p><h1>把進步畫出來。</h1><p className="intro-copy">不是追求每天完美，而是讓自己看見路徑真的在延伸。</p></div><div className="stat-stamp"><BarChart3 size={17} /><span>7 DAYS</span></div></section>
       <section className="stats-highlight"><div><span>本週總循環</span><b>{days.reduce((sum, day) => sum + day.count, 0)}</b><small>次</small></div><div><span>日均循環</span><b>{average}</b><small>次</small></div><div><span>目前連續</span><b>{streak}</b><small>日</small></div><div><span>累積 XP</span><b>{xp}</b><small>XP</small></div></section>
       <section className="panel chart-panel"><div className="panel-heading"><div><p className="eyebrow">CYCLE COUNT / KCAL</p><h3>每週循環節奏</h3></div><span className="goal-marker"><span />每日目標 {dailyGoal} 次</span></div><div className="chart-wrap"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartData} margin={{ top: 8, right: 0, left: -18, bottom: 0 }}><CartesianGrid vertical={false} stroke="#e5dfd4" strokeDasharray="3 4" /><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#897f70", fontSize: 14, fontWeight: 700 }} /><YAxis axisLine={false} tickLine={false} tick={{ fill: "#b0a89c", fontSize: 13 }} allowDecimals={false} /><Tooltip cursor={{ fill: "#f3eee7" }} contentStyle={{ border: "1px solid #ded5c8", borderRadius: "12px", boxShadow: "0 10px 30px #2b292422", fontFamily: "Noto Sans TC", fontSize: 14 }} labelStyle={{ fontSize: 14 }} itemStyle={{ fontSize: 14 }} /><ReferenceLine y={dailyGoal} stroke="#d9a441" strokeDasharray="4 4" /><Bar dataKey="次數" fill="#e86a33" radius={[5, 5, 1, 1]} maxBarSize={34} /></BarChart></ResponsiveContainer></div><div className="chart-foot"><span><i className="legend-dot orange-dot" />循環次數</span><span><i className="legend-line" />目標線</span><span className="chart-foot-note">每次循環 = {kcalPerCycle} 大卡</span></div></section>
-      <section className="panel journal-panel"><div className="panel-heading"><div><p className="eyebrow">SEVEN TRAIL MARKS</p><h3>每日記錄</h3></div><CalendarDays size={20} className="heading-icon" /></div><div className="journal-list">{days.map(day => <div className="journal-row" key={day.key}><div className="journal-date"><b>{day.label}</b><span>{shortDate(day.key)}</span></div><div className="journal-track"><span style={{ width: `${Math.min(100, (day.count / dailyGoal) * 100)}%` }} /><i style={{ left: `${Math.min(99, (day.count / dailyGoal) * 100)}%` }} /></div><div className="journal-value"><b>{day.count}</b><span>次</span></div><div className={`journal-status ${day.count >= dailyGoal ? "done" : ""}`}>{day.count >= dailyGoal ? <Check size={13} /> : `${day.kcal} kcal`}</div></div>)}</div></section>
+      <KcalBurnPanel history={kcalHistory} dailyGoal={dailyGoal} kcalPerCycle={kcalPerCycle} />
+      <section className="panel journal-panel"><div className="panel-heading"><div><p className="eyebrow">SEVEN TRAIL MARKS</p><h3>每日記錄</h3></div><CalendarDays size={20} className="heading-icon" /></div><div className="journal-list">{days.map(day => <div className="journal-row" key={day.key}><div className="journal-date"><b>{day.label}</b><span>{shortDate(day.key)}</span></div><div className="journal-track"><span style={{ width: `${Math.min(100, (day.count / dailyGoal) * 100)}%` }} /><i style={{ left: `${Math.min(99, (day.count / dailyGoal) * 100)}%` }} /></div><div className="journal-value"><b>{day.count}</b><span>次</span></div><div className="journal-kcal"><b>{day.kcal}</b><span>kcal</span></div><div className={`journal-status ${day.count >= dailyGoal ? "done" : ""}`}>{day.count >= dailyGoal ? <Check size={13} /> : `差 ${dailyGoal - day.count} 次`}</div></div>)}</div></section>
       <section className="panel history-panel"><div className="panel-heading"><div><p className="eyebrow">LOOP LOG / DETAIL</p><h3>每次循環做了什麼？</h3></div><Footprints size={20} className="heading-icon" /></div>{entries.length === 0 ? <div className="history-empty"><Circle size={18} /><p>完成下一次循環後，時間、動作與獎勵會在這裡留下記號。</p></div> : <div className="history-list">{entries.slice(0, 12).map(entry => <article className="history-entry" key={entry.id}><div className="history-entry-time"><b>{shortDate(entry.date)}</b><span>{entry.time}</span></div><div className="history-entry-body"><div className="history-entry-rewards"><span><Flame size={12} /> {entry.kcal} kcal</span><span><Zap size={12} /> +{entry.xp} XP</span><span><Coins size={12} /> +{entry.coins}</span></div><div className="action-chips">{entry.actions.map((action, index) => <span key={`${entry.id}-${index}`}>{action}</span>)}</div></div><Check size={16} className="history-check" /></article>)}</div>}</section>
       <section className="panel transaction-panel"><div className="panel-heading"><div><p className="eyebrow">RESOURCE LEDGER / FIELD NOTES</p><h3>大卡與金幣交易紀錄</h3></div><Coins size={20} className="heading-icon" /></div><div className="transaction-filters"><label>資源<select value={resourceFilter} onChange={event => setResourceFilter(event.target.value as typeof resourceFilter)}><option value="all">全部</option><option value="kcal">大卡</option><option value="coins">金幣</option></select></label><label>用途<select value={kindFilter} onChange={event => setKindFilter(event.target.value as typeof kindFilter)}><option value="all">全部用途</option><option value="cycle">循環入帳</option><option value="trail">推進獵徑</option><option value="combat">打怪</option><option value="equipment">設備</option><option value="milestone">里程碑</option><option value="study">教檢答題</option></select></label></div><p className="transaction-note">每一筆入帳與花費都留下時間、來源與交易後餘額，讓你看見資源如何推動這趟旅程。</p>{filteredTransactions.length === 0 ? <div className="history-empty"><Circle size={18} /><p>{transactions.length === 0 ? "完成循環或使用地圖功能後，交易明細會出現在這裡。" : "目前篩選條件沒有交易紀錄。"}</p></div> : <div className="transaction-list">{filteredTransactions.slice(0, 24).map(transaction => <article className="transaction-row" key={transaction.id}><div className={`transaction-resource ${transaction.resource}`}><span>{transaction.resource === "kcal" ? <Flame size={14} /> : <Coins size={14} />}</span><b>{transaction.resource === "kcal" ? "大卡" : "金幣"}</b></div><div className="transaction-body"><b>{transaction.description}</b><small>{new Date(transaction.occurredAt).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}・{transaction.kind}</small></div><strong className={transaction.amountDelta >= 0 ? "positive" : "negative"}>{transaction.amountDelta >= 0 ? "+" : ""}{transaction.amountDelta}</strong><span className="transaction-balance">餘 {transaction.balanceAfter}</span></article>)}</div>}</section>
       <div className="stats-callout"><Shield size={19} /><div><b>給未來的自己</b><p>你不需要一次走完整座山。今天多完成一次，就是明天的起點。</p></div><ArrowUpRight size={17} /></div>
@@ -720,7 +754,10 @@ export default function Home() {
   const lastSyncedPayload = useRef("");
   const todayKey = dateKey(new Date());
   const todayCount = state.activeDate === todayKey ? (state.history[todayKey] ?? 0) : 0;
-  const days = useMemo(() => getLastSevenDays().map(day => { const dayEntries = state.entries.filter(entry => entry.date === day.key); return { ...day, count: state.history[day.key] ?? 0, kcal: dayEntries.length > 0 ? dayEntries.reduce((sum, entry) => sum + entry.kcal, 0) : (state.history[day.key] ?? 0) * state.settings.kcalPerCycle }; }), [state.history, state.entries, state.settings.kcalPerCycle]);
+  const fillDay = (day: DayPoint): DayPoint => { const dayEntries = state.entries.filter(entry => entry.date === day.key); return { ...day, count: state.history[day.key] ?? 0, kcal: dayEntries.length > 0 ? dayEntries.reduce((sum, entry) => sum + entry.kcal, 0) : (state.history[day.key] ?? 0) * state.settings.kcalPerCycle }; };
+  const days = useMemo(() => getLastDays(7).map(fillDay), [state.history, state.entries, state.settings.kcalPerCycle]);
+  /* 統計頁最長看 30 天，並多取一段等長區間用來比較趨勢。 */
+  const kcalHistory = useMemo(() => getLastDays(60).map(fillDay), [state.history, state.entries, state.settings.kcalPerCycle]);
   const xp = (state.entries.length > 0 ? state.entries.reduce((sum, entry) => sum + entry.xp, 0) : state.totalCount * XP_PER_CYCLE) + state.bonusXp;
   const level = Math.floor(xp / 100) + 1;
   const coins = coinBalanceFromLedger(state.transactions, state.entries.length > 0 ? state.entries.reduce((sum, entry) => sum + entry.coins, 0) : state.totalCount * COINS_PER_CYCLE);
@@ -982,7 +1019,7 @@ export default function Home() {
         <Header level={level} coins={coins} onReset={resetProgress} isAuthenticated={auth.isAuthenticated} cloudEnabled={isCloudEnabled} onAuthAction={() => { if (auth.isAuthenticated) { void auth.logout(); } else { startLogin(); } }} />
         <main className="main-content">
           {activeTab === "home" && <HomeScreen days={days} todayCount={todayCount} totalCount={state.totalCount} xp={xp} level={level} coins={coins} streak={streak} settings={state.settings} kcalBalance={state.kcalBalance} todayKcal={todayEntries.length > 0 ? todayEntries.reduce((sum, entry) => sum + entry.kcal, 0) : todayCount * state.settings.kcalPerCycle} equipment={state.equipment} quest={state.quest} onAdd={addCycle} onOpenMap={() => setActiveTab("map")} />}
-          {activeTab === "stats" && <StatsScreen days={days} totalCount={state.totalCount} xp={xp} streak={streak} entries={state.entries} transactions={state.transactions} kcalPerCycle={state.settings.kcalPerCycle} dailyGoal={state.settings.dailyGoal} />}
+          {activeTab === "stats" && <StatsScreen days={days} kcalHistory={kcalHistory} totalCount={state.totalCount} xp={xp} streak={streak} entries={state.entries} transactions={state.transactions} kcalPerCycle={state.settings.kcalPerCycle} dailyGoal={state.settings.dailyGoal} />}
           {activeTab === "map" && <QuestMapScreen quest={state.quest} collection={state.collection} difficulty={state.settings.difficulty} equipment={state.equipment} kcalBalance={state.kcalBalance} coins={coins} trailCost={routeActionCost(20, state.equipment)} combatCost={combatActionCost(30, state.equipment)} onSpend={spendKcal} onBuy={buyEquipment} onClaimDaily={claimDaily} />}
           {activeTab === "pack" && <PackScreen totalCount={state.totalCount} coins={coins} quest={state.quest} collection={state.collection} achievements={achievements} study={state.study} onReset={resetProgress} onOpenChest={openChestById} onShare={() => shareTrailCard({ todayCount, dailyGoal: state.settings.dailyGoal, kcal: todayEntries.length > 0 ? todayEntries.reduce((sum, entry) => sum + entry.kcal, 0) : todayCount * state.settings.kcalPerCycle, streak, totalCount: state.totalCount })} />}
           {activeTab === "settings" && <SettingsScreen settings={state.settings} todayCount={todayCount} onSave={nextSettings => setState(current => ({ ...current, settings: nextSettings }))} />}
