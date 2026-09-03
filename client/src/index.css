@@ -413,3 +413,42 @@ button:focus-visible, a:focus-visible { outline: 3px solid #e86a33; outline-offs
 .exam-links a:hover { background: rgba(232, 106, 51, 0.1); }
 @media (max-width: 900px) { .exam-countdown { grid-template-columns: 1fr; gap: 16px; } .exam-countdown-facts { grid-template-columns: 1fr; } .exam-days { font-size: 2.6rem; } }
 @media (max-width: 420px) { .subject-filter button { flex: 1 1 calc(50% - 8px); font-size: 0.86rem; padding: 7px 8px; } }
+
+/* === 考科範圍與重點筆記 === */
+.study-switch { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin: 18px 0 4px; }
+.study-switch .segment-tabs { padding: 0; }
+.study-switch .subject-filter { margin-bottom: 0; }
+.scope-panel, .notes-panel { margin-top: 12px; padding-bottom: 20px; }
+.scope-block { padding: 0 24px 4px; margin-bottom: 18px; }
+.scope-title { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.scope-title span { font-family: "Bree Serif", Georgia, serif; font-size: 1.15rem; color: #E86A33; }
+.scope-title b { font-size: 1.15rem; }
+.scope-fields { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.scope-fields span { padding: 4px 10px; border-radius: 999px; background: rgba(122, 155, 100, 0.16); color: #4f6a3d; font-size: 0.84rem; }
+.scope-preamble { margin: 0 0 8px; font-size: 0.93rem; line-height: 1.55; opacity: 0.78; }
+.scope-list { margin: 0; padding-left: 22px; display: grid; gap: 8px; }
+.scope-list li { font-size: 1rem; line-height: 1.6; }
+.scope-list.compact li { font-size: 0.93rem; line-height: 1.5; }
+.scope-format { margin: 4px 24px 0; padding: 14px 16px; border-radius: 12px; background: rgba(217, 164, 65, 0.12); }
+.scope-format b { display: block; margin-bottom: 8px; }
+.scope-format ul { margin: 0; padding-left: 18px; display: grid; gap: 5px; }
+.scope-format li { font-size: 0.93rem; line-height: 1.5; }
+.scope-panel .study-source, .notes-panel .study-source { padding: 0 24px; margin-top: 16px; }
+.scope-jump { display: inline-flex; align-items: center; gap: 5px; margin-top: 12px; padding: 8px 13px; border-radius: 999px; border: 1px solid rgba(232, 106, 51, 0.45); background: transparent; color: #E86A33; font-size: 0.9rem; cursor: pointer; }
+.scope-jump:hover { background: rgba(232, 106, 51, 0.1); }
+.note-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; padding: 0 24px; }
+.note-card { display: flex; flex-direction: column; padding: 16px 17px; border: 1px solid #e6e0d7; border-radius: 14px; background: #fbf9f5; }
+.note-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.note-kind { padding: 3px 9px; border-radius: 999px; font-size: 0.78rem; font-weight: 800; background: #E86A33; color: #fff8ed; }
+.note-kind[data-kind="速查"] { background: #7A9B64; }
+.note-kind[data-kind="對照"] { background: #D9A441; color: #3a2f22; }
+.note-kind[data-kind="圖卡"] { background: #C8504D; }
+.note-subject { font-size: 0.82rem; opacity: 0.62; }
+.note-card h4 { margin: 0 0 6px; font-size: 1.08rem; line-height: 1.4; }
+.note-hook { margin: 0 0 12px; padding: 9px 11px; border-left: 3px solid #D9A441; background: rgba(217, 164, 65, 0.12); font-size: 0.94rem; line-height: 1.55; }
+.note-points { margin: 0; display: grid; gap: 8px; }
+.note-points > div { display: grid; gap: 2px; }
+.note-points dt { font-weight: 800; font-size: 0.93rem; }
+.note-points dd { margin: 0; font-size: 0.92rem; line-height: 1.5; opacity: 0.85; }
+.note-source { margin-top: 12px; padding-top: 10px; border-top: 1px dashed #e1dacf; font-size: 0.78rem; opacity: 0.6; word-break: break-all; }
+@media (max-width: 700px) { .study-switch { flex-direction: column; align-items: stretch; } .scope-block, .scope-panel .study-source, .notes-panel .study-source, .note-grid { padding-left: 16px; padding-right: 16px; } .scope-format { margin-left: 16px; margin-right: 16px; } .note-grid { grid-template-columns: 1fr; } }

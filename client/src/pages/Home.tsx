@@ -7,6 +7,8 @@ import { isCloudEnabled, startLogin } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { applyStudyAnswer, buildJourneySyncPayload, canPurchaseEquipment, coinBalanceFromLedger, combatActionCost, cycleRewards, dailyMilestoneEvent, legacyCoinOpeningBalance, legacyCoinOpeningTransaction, mergeTransactionLedgers, remoteLegacyCoinOpeningAmount, removeCycleFromLedger, resourceBalanceFromLedger, routeActionCost, shouldResetDaily, studyCoinReward, weeklyRewardFromProgress } from "@shared/gameRules";
 import { TEACHER_QUESTIONS, TEACHER_SUBJECTS, questionsBySubject, type TeacherQuestion, type TeacherSubject } from "@shared/teacherQuestions";
+import { EXAM_FORMAT_NOTES, EXAM_SCOPE, EXAM_SCOPE_SOURCE, EXAM_SCOPE_URL, scopeFor } from "@shared/examScope";
+import { STUDY_NOTES, STUDY_NOTES_ORIGIN, notePointCount, notesBySubject } from "@shared/studyNotes";
 import { EXAM_DATE_LABEL, EXAM_NAME, EXAM_OFFICIAL_URL, EXAM_PASS_RULES, EXAM_PAST_PAPER_URL, EXAM_SUBJECTS, EXAM_YEAR_LABEL, dailyQuestionPace, examCountdown } from "@shared/examInfo";
 import { gradeTeacherQuestion, nextQuestionIndex } from "@shared/studyFlow";
 import { CHEST_META, RELIC_BY_ID, addChest, applyChestOpening, emptyCollection, makeChest, mergeCollections, migrateLegacyChests, recordDefeat, recordRelic, setCycleCoinBonus, type ChestReward, type ChestTier, type CollectionState } from "@shared/collection";
@@ -25,6 +27,7 @@ import {
   CalendarDays,
   Check,
   ExternalLink,
+  ScrollText,
   Cloud,
   Download,
   LogIn,
@@ -499,7 +502,33 @@ function SettingsScreen({ settings, todayCount, onSave }: { settings: Settings; 
 }
 
 
+type StudySegment = "drill" | "scope" | "notes";
+
+const STUDY_SEGMENTS: { key: StudySegment; label: string }[] = [
+  { key: "drill", label: "題庫練習" },
+  { key: "scope", label: "考科範圍" },
+  { key: "notes", label: "重點筆記" },
+];
+
+function ScopePanel({ subject }: { subject: TeacherSubject | "all" }) {
+  const shown = subject === "all" ? EXAM_SCOPE : EXAM_SCOPE.filter(item => item.subject === subject);
+  return <section className="panel scope-panel"><div className="panel-heading"><div><p className="eyebrow">OFFICIAL SCOPE / 命題範圍</p><h3>國小類科教育專業科目細項</h3></div><ScrollText size={20} className="heading-icon" /></div>
+    {shown.map((item, itemIndex) => <div key={item.subject} className="scope-block"><div className="scope-title"><span>{String(EXAM_SCOPE.indexOf(item) + 1).padStart(2, "0")}</span><b>{item.subject}</b></div><div className="scope-fields">{item.fields.map(field => <span key={field}>{field}</span>)}</div>{item.preamble && <p className="scope-preamble">{item.preamble}</p>}<ol className="scope-list">{item.indicators.map(indicator => <li key={indicator}>{indicator}</li>)}</ol>{itemIndex === shown.length - 1 && <></>}</div>)}
+    <div className="scope-format"><b>命題形式</b><ul>{EXAM_FORMAT_NOTES.map(note => <li key={note}>{note}</li>)}</ul></div>
+    <p className="study-source">指標文字逐字引自{EXAM_SCOPE_SOURCE}。<a href={EXAM_SCOPE_URL} target="_blank" rel="noreferrer">查看法規原文 <ExternalLink size={12} /></a></p>
+  </section>;
+}
+
+function NotesPanel({ subject }: { subject: TeacherSubject | "all" }) {
+  const notes = notesBySubject(subject);
+  return <section className="panel notes-panel"><div className="panel-heading"><div><p className="eyebrow">SECOND BRAIN / 重點筆記</p><h3>{notes.length} 則筆記・{notes.reduce((sum, note) => sum + note.points.length, 0)} 個記憶點</h3></div><Sparkles size={20} className="heading-icon" /></div>
+    <div className="note-grid">{notes.map(note => <article key={note.id} className="note-card"><div className="note-head"><span className="note-kind" data-kind={note.kind}>{note.kind}</span><span className="note-subject">{note.subject}</span></div><h4>{note.title}</h4><p className="note-hook">{note.hook}</p><dl className="note-points">{note.points.map(point => <div key={point.term}><dt>{point.term}</dt><dd>{point.detail}</dd></div>)}</dl><small className="note-source">{note.source}</small></article>)}</div>
+    <p className="study-source">{STUDY_NOTES_ORIGIN}；全庫共 {STUDY_NOTES.length} 則、{notePointCount()} 個記憶點。原始筆記與圖卡仍在 Obsidian，這裡只放考前速記。</p>
+  </section>;
+}
+
 export function TeacherPrepScreen({ progress, onAnswer }: { progress: StudyProgress; onAnswer: (correct: boolean) => void }) {
+  const [segment, setSegment] = useState<StudySegment>("drill");
   const [subject, setSubject] = useState<TeacherSubject | "all">("all");
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
@@ -509,13 +538,17 @@ export function TeacherPrepScreen({ progress, onAnswer }: { progress: StudyProgr
   const pace = dailyQuestionPace(countdown.days, remaining);
   const question: TeacherQuestion = pool[index % pool.length];
   const answered = selected !== null;
+  const activeScope = subject === "all" ? null : scopeFor(subject);
   const pickSubject = (value: TeacherSubject | "all") => { setSubject(value); setIndex(0); setSelected(null); };
   const choose = (option: number) => { if (answered) return; const result = gradeTeacherQuestion(question, option); setSelected(option); onAnswer(result.correct); if (result.correct) toast.success("答對了，獲得 +15 XP。", { description: "把這枚知識記號收進你的教檢獵徑。" }); else toast.error("這一題先記下來。", { description: "看完詳解，再走下一題。" }); };
   const next = () => { setIndex(value => nextQuestionIndex(value, pool.length)); setSelected(null); };
   return <>
-    <section className="page-intro compact"><div><p className="eyebrow">TEACHER CERTIFICATION / STUDY TRAIL</p><h1>教檢題庫，走一題算一題。</h1><p className="intro-copy">國民小學教育專業科目共三科，題庫收錄 {TEACHER_QUESTIONS.length} 題練習題，依官方命題範圍編寫。</p></div><div className="study-stamp"><BookOpen size={17} /><span>{progress.correct} 題答對・連勝 {progress.streak}</span></div></section>
+    <section className="page-intro compact"><div><p className="eyebrow">TEACHER CERTIFICATION / STUDY TRAIL</p><h1>教檢題庫，走一題算一題。</h1><p className="intro-copy">國民小學教育專業科目共三科、{EXAM_SCOPE.reduce((sum, item) => sum + item.indicators.length, 0)} 項命題指標；題庫收錄 {TEACHER_QUESTIONS.length} 題練習題與 {STUDY_NOTES.length} 則重點筆記。</p></div><div className="study-stamp"><BookOpen size={17} /><span>{progress.correct} 題答對・連勝 {progress.streak}</span></div></section>
     <section className={`panel exam-countdown ${countdown.state}`}><div className="exam-countdown-main"><p className="eyebrow">{EXAM_YEAR_LABEL}教師資格考試</p><strong className="exam-days">{countdown.state === "far" || countdown.state === "near" ? <>D-{countdown.days}</> : countdown.label}</strong><p className="exam-note">{countdown.note}</p></div><div className="exam-countdown-facts"><div><span><CalendarDays size={14} /> 考試日期</span><b>{EXAM_DATE_LABEL}</b></div><div><span><Target size={14} /> 建議節奏</span><b>{remaining > 0 ? `每天 ${pace} 題可走完題庫` : "題庫已全部答對過一輪"}</b></div><div><span><BookOpen size={14} /> 尚未答對</span><b>{remaining} / {TEACHER_QUESTIONS.length} 題</b></div></div></section>
-    <section className="study-layout"><div className="panel study-card"><div className="subject-filter"><button className={subject === "all" ? "active" : ""} onClick={() => pickSubject("all")}>全部 {TEACHER_QUESTIONS.length}</button>{TEACHER_SUBJECTS.map(item => <button key={item} className={subject === item ? "active" : ""} onClick={() => pickSubject(item)}>{item} {questionsBySubject(item).length}</button>)}</div><div className="study-meta"><span className="subject-chip">{question.subject}</span><span>第 {(index % pool.length) + 1} / {pool.length} 題</span></div><h2>{question.question}</h2><div className="study-options">{question.options.map((option, optionIndex) => <button key={option} className={selected === optionIndex ? (optionIndex === question.answer ? "correct" : "wrong") : answered && optionIndex === question.answer ? "correct" : ""} onClick={() => choose(optionIndex)}><span>{String.fromCharCode(65 + optionIndex)}</span><b>{option}</b></button>)}</div>{answered && <div className={`study-feedback ${selected === question.answer ? "correct" : "wrong"}`}><strong>{selected === question.answer ? "答對！知識獵徑亮起。" : `正解是 ${String.fromCharCode(65 + question.answer)}。`}</strong><p>{question.explanation}</p><small>題目依官方命題範圍編寫：{question.source}</small></div>}<div className="study-actions"><span>{answered ? "已完成本題" : "選一個答案開始"}</span><button onClick={next} disabled={!answered}>下一題 <ChevronRight size={16} /></button></div></div><aside className="panel study-guide"><p className="eyebrow">EXAM BRIEFING</p><div className="study-progress-badge">第 {progress.chapter} 章・寶箱 {progress.chestCount}</div><h3>國小類科應試科目</h3><div className="exam-subject-list">{EXAM_SUBJECTS.map((item, itemIndex) => <div key={item.name} className={`exam-subject ${item.covered ? "covered" : ""}`}><span>{String(itemIndex + 1).padStart(2, "0")}</span><b>{item.name}</b><small>{item.group === "common" ? "共同科目" : item.covered ? "本題庫涵蓋" : "教育專業科目"}</small></div>)}</div><h3>及格標準</h3><ul className="exam-rules">{EXAM_PASS_RULES.map(rule => <li key={rule}>{rule}</li>)}</ul><p className="study-source">{EXAM_NAME}。及格標準依《高級中等以下學校及幼兒園教師資格考試辦法》第 9 條；本題庫為依官方命題範圍編寫之練習題，非官方歷屆試題。報名日期與簡章以官方公告為準。</p><div className="exam-links"><a href={EXAM_OFFICIAL_URL} target="_blank" rel="noreferrer">官方最新消息 <ExternalLink size={13} /></a><a href={EXAM_PAST_PAPER_URL} target="_blank" rel="noreferrer">歷屆試題與參考答案 <ExternalLink size={13} /></a></div></aside></section>
+    <div className="study-switch"><div className="segment-tabs">{STUDY_SEGMENTS.map(item => <button key={item.key} className={segment === item.key ? "selected" : ""} onClick={() => setSegment(item.key)}>{item.label}</button>)}</div><div className="subject-filter"><button className={subject === "all" ? "active" : ""} onClick={() => pickSubject("all")}>全部 {TEACHER_QUESTIONS.length}</button>{TEACHER_SUBJECTS.map(item => <button key={item} className={subject === item ? "active" : ""} onClick={() => pickSubject(item)}>{item} {questionsBySubject(item).length}</button>)}</div></div>
+    {segment === "scope" && <ScopePanel subject={subject} />}
+    {segment === "notes" && <NotesPanel subject={subject} />}
+    {segment === "drill" && <section className="study-layout"><div className="panel study-card"><div className="study-meta"><span className="subject-chip">{question.subject}</span><span>第 {(index % pool.length) + 1} / {pool.length} 題</span></div><h2>{question.question}</h2><div className="study-options">{question.options.map((option, optionIndex) => <button key={option} className={selected === optionIndex ? (optionIndex === question.answer ? "correct" : "wrong") : answered && optionIndex === question.answer ? "correct" : ""} onClick={() => choose(optionIndex)}><span>{String.fromCharCode(65 + optionIndex)}</span><b>{option}</b></button>)}</div>{answered && <div className={`study-feedback ${selected === question.answer ? "correct" : "wrong"}`}><strong>{selected === question.answer ? "答對！知識獵徑亮起。" : `正解是 ${String.fromCharCode(65 + question.answer)}。`}</strong><p>{question.explanation}</p><small>題目依官方命題範圍編寫：{question.source}</small></div>}<div className="study-actions"><span>{answered ? "已完成本題" : "選一個答案開始"}</span><button onClick={next} disabled={!answered}>下一題 <ChevronRight size={16} /></button></div></div><aside className="panel study-guide"><p className="eyebrow">EXAM BRIEFING</p><div className="study-progress-badge">第 {progress.chapter} 章・寶箱 {progress.chestCount}</div>{activeScope ? <><h3>{activeScope.subject}</h3><div className="scope-fields">{activeScope.fields.map(field => <span key={field}>{field}</span>)}</div><ol className="scope-list compact">{activeScope.indicators.map(indicator => <li key={indicator}>{indicator}</li>)}</ol><button className="scope-jump" onClick={() => setSegment("scope")}>看完整考科範圍 <ChevronRight size={14} /></button></> : <><h3>國小類科應試科目</h3><div className="exam-subject-list">{EXAM_SUBJECTS.map((item, itemIndex) => <div key={item.name} className={`exam-subject ${item.covered ? "covered" : ""}`}><span>{String(itemIndex + 1).padStart(2, "0")}</span><b>{item.name}</b><small>{item.group === "common" ? "共同科目" : "本題庫涵蓋"}</small></div>)}</div><h3>及格標準</h3><ul className="exam-rules">{EXAM_PASS_RULES.map(rule => <li key={rule}>{rule}</li>)}</ul></>}<p className="study-source">{EXAM_NAME}。及格標準依《高級中等以下學校及幼兒園教師資格考試辦法》第 9 條；本題庫為依官方命題範圍編寫之練習題，非官方歷屆試題。報名日期與簡章以官方公告為準。</p><div className="exam-links"><a href={EXAM_OFFICIAL_URL} target="_blank" rel="noreferrer">官方最新消息 <ExternalLink size={13} /></a><a href={EXAM_PAST_PAPER_URL} target="_blank" rel="noreferrer">歷屆試題與參考答案 <ExternalLink size={13} /></a></div></aside></section>}
   </>;
 }
 

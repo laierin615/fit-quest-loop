@@ -146,3 +146,10 @@
 - [x] 新增 shared/examInfo.ts：116/6/13 考試日期、國小類科五科應試科目、及格標準（考試辦法第 9 條）與官方連結。
 - [x] 教檢頁新增倒數橫幅（D-day）、EXAM BRIEFING 側欄與科目篩選。
 - [x] 新增 examInfo.test.ts 覆蓋倒數邊界、四種狀態與題庫格式，通過 test、check、build 與 desktop／mobile 驗證。
+
+## 考科範圍細項與第二大腦重點筆記
+
+- [x] 新增 shared/examScope.ts：逐字收錄國小類科三科共 14 項官方命題指標、涵蓋學科與命題形式通則。
+- [x] 新增 shared/studyNotes.ts：自第二大腦 40-教檢準備/ 整理 16 則重點筆記、88 個記憶點，每則保留原筆記路徑。
+- [x] 教檢頁改為三分頁（題庫練習／考科範圍／重點筆記），科目篩選同時作用於三個分頁；題庫分頁側欄在選定科目時改顯示該科命題指標。
+- [x] 新增 examScope.test.ts 驗證指標數量（4/5/5）、不得混入中等學校版用語與筆記來源標示，通過 test、check、build 與 desktop／mobile 驗證。
